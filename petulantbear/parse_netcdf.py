@@ -13,7 +13,9 @@ DIMENSION   = 'dimension'
 ATTRIBUTE   = 'attribute'
 GROUP       = 'group'
 NAME        = 'name'
+SHAPE       = 'shape'
 LENGTH      = 'length'
+ISUNLIMITED = 'isUnlimited'
 VALUE       = 'value'
 TYPE        = 'type'
 LOCATION    = 'location'
@@ -23,39 +25,85 @@ HEADER      = '''<?xml version="1.0" encoding="UTF-8"?>'''
 
 # common types...
 type_map = {
-    numpy.int32 : 'int',
-    numpy.int64 : 'long',
-    numpy.float32 : 'float',
-    numpy.float64 : 'double',
+    numpy.int8      : 'byte',
+    numpy.int16     : 'short',
+    numpy.int32     : 'int',
+    numpy.int64     : 'long',
+    numpy.float32   : 'float',
+    numpy.float64   : 'double',
+    numpy.string_   : 'char',
+    # This is weak sauce... type(str) == type !
+    type(str)       : 'char'
     }
+    
+inverse_type_map = {
+    'byte'      : numpy.int8,
+    'short'     : numpy.int16,
+    'int'       : numpy.int32,
+    'long'      : numpy.int64,
+    'float'     : numpy.float32,
+    'double'    : numpy.float64,
+    'char'      : unicode,
+    }
+    
 
-def parse_dim(output, dim):
-    output.write('''<{dimension} {name}="{dimname}" {length}="{dimlen}"/>\n'''.format(
-        dimension=DIMENSION,
-        name=NAME,
-        dimname=dim._name,
-        length=LENGTH,
-        dimlen=len(dim)
+def sanatize(string,spaces=True):
+    string = string.replace('"','&quote;')
+    string = string.replace('&','&amp;')
+    
+    if spaces is True: string = string.replace(' ','_')
+    string = string.replace('<','&lt;')
+    string = string.replace('>','&gt;')
+    
+    return string
+
+def parse_dim(output, dim, indent):
+    if dim.isunlimited():
+        print "Dim named:", dim._name, " Is unlimted!"
+        output.write('''{indent}<{dimension} {name}="{dimname}" {length}="{dimlen}" {isunlimited}="true"/>\n'''.format(
+            indent = indent,
+            dimension=DIMENSION,
+            name=NAME,
+            dimname=sanatize(dim._name),
+            length=LENGTH,
+            dimlen=len(dim),
+            isunlimited=ISUNLIMITED
+            )
         )
-    )
+    else:
+        print "Dim named:", dim._name, " Is NOT unlimted!"
+        output.write('''{indent}<{dimension} {name}="{dimname}" {length}="{dimlen}"/>\n'''.format(
+            indent = indent,
+            dimension=DIMENSION,
+            name=NAME,
+            dimname=sanatize(dim._name),
+            length=LENGTH,
+            dimlen=len(dim)
+            )
+        )
 
-def parse_att(output, att):
+def parse_att(output, att, indent):
+    """
+    att is a tuple: (name, value)
+    """
     if isinstance(att[1],(str,unicode)):
-        output.write('''<{attribute} {name}="{attname}" {value}="{attvalue}"/>\n'''.format(
+        output.write('''{indent}<{attribute} {name}="{attname}" {value}="{attvalue}"/>\n'''.format(
+            indent = indent,
             attribute=ATTRIBUTE,
             name=NAME,
-            attname=att[0],
+            attname=sanatize(att[0],spaces=False),
             value=VALUE,
-            attvalue=att[1]
+            attvalue=sanatize(att[1])
             )
         )
     else :
     
         att_type = type_map.get(type(att[1]), 'unknown')
-        output.write('''<{attribute} {name}="{attname}" {type}="{att_type}" {value}="{attvalue}"/>\n'''.format(
+        output.write('''{indent}<{attribute} {name}="{attname}" {type}="{att_type}" {value}="{attvalue}"/>\n'''.format(
+            indent = indent,
             attribute=ATTRIBUTE,
             name=NAME,
-            attname=att[0],
+            attname=sanatize(att[0]),
             type=TYPE,
             att_type = att_type,
             value=VALUE,
@@ -65,60 +113,126 @@ def parse_att(output, att):
         
 
 
-def parse_var(output, var):
+def parse_var(output, var, indent):
+    
+    try:
+        vtype = var.dtype.type
+    except AttributeError: 
+        vtype = var.dtype
+        
+    if len(var.ncattrs()) == 0:
+            output.write('''{indent}<{variable} {name}="{varname}" {shape}="{vardims}" {type}="{vartype}"/>\n'''.format(
+                indent = indent,
+                variable=VARIABLE,
+                name=NAME,
+                varname=sanatize(var._name),
+                shape=SHAPE,
+                vardims=' '.join([sanatize(dname) for dname in var.dimensions]),
+                type=TYPE,
+                vartype = type_map.get(vtype,'unknown'),
+                )
+            )
+    else:
+        output.write('''{indent}<{variable} {name}="{varname}" {shape}="{vardims}" {type}="{vartype}">\n'''.format(
+                indent = indent,
+                variable=VARIABLE,
+                name=NAME,
+                varname=sanatize(var._name),
+                shape=SHAPE,
+                vardims=' '.join([sanatize(dname) for dname in var.dimensions]),
+                type=TYPE,
+                vartype = type_map.get(vtype,'unknown'),
+                )
+            )
 
-    for attname in var.ncattrs():
-        parse_att(output,(attname,var.getncattr(attname)))
+        new_indent = indent + '  '
 
-def parse_group(output, group):
+        for attname in var.ncattrs():
+            parse_att(output,(attname,var.getncattr(attname)), new_indent)
 
-    for dim in root.dimensions.values():
-        parse_dim(output, dim)
+        output.write('''{}</{}>\n'''.format(indent,VARIABLE))
+
+
+def parse_group(output, group, indent):
+
+    output.write('''{indent}<{group} {name}="{groupname}">\n'''.format(
+            indent = indent,
+            group=GROUP,
+            name=NAME,
+            groupname=sanatize(group.path.split('/')[-1]),
+            )
+        )
+
+    new_indent = indent + '  '
+
+    for dim in group.dimensions.values():
+        parse_dim(output, dim, new_indent)
 
     for attname in group.ncattrs():
-        parse_att(output,(attname,group.getncattr(attname)))
+        parse_att(output,(attname,group.getncattr(attname)), new_indent)
 
     
     for var in group.variables.values():
-        parse_var(output, var)
+        parse_var(output, var, new_indent)
+
+    output.write('''{}</{}>\n'''.format(indent,GROUP))
 
 
-def parse_dataset(dataset, url="file:/unknown"):
 
-    #output = cStringIO.StringIO()
-    output = open('test.xml','w')
+def parse_dataset_buffer(dataset,output,url=None):
     
-    output.write('''{header}\n<{netcdf} {xmlns}="{namespace}" {location}="{url}">\n'''.format(
-            header=HEADER,
-            netcdf=NETCDF, 
-            xmlns=XMLNS,
-            namespace=NAMESPACE,
-            location=LOCATION,
-            url = url
+    if url is None:
+        output.write('''{header}\n<{netcdf} {xmlns}="{namespace}">\n'''.format(
+                header=HEADER,
+                netcdf=NETCDF, 
+                xmlns=XMLNS,
+                namespace=NAMESPACE,
+                location=LOCATION,
+                url = url
+                )
             )
-        )
+    else:
+        output.write('''{header}\n<{netcdf} {xmlns}="{namespace}" {location}="{url}">\n'''.format(
+                header=HEADER,
+                netcdf=NETCDF, 
+                xmlns=XMLNS,
+                namespace=NAMESPACE,
+                location=LOCATION,
+                url = url
+                )
+            )
     
+    indent = '  '
     for dim in dataset.dimensions.values():
-        parse_dim(output, dim)
+        parse_dim(output, dim, indent)
     
     for attname in dataset.ncattrs():
-        parse_att(output,(attname,dataset.getncattr(attname)))
-    
+        parse_att(output,(attname,dataset.getncattr(attname)), indent)
+
+    for var in dataset.variables.values():
+        parse_var(output, var, indent)
     
     for group in dataset.groups.values():
-        parse_group(output,group)
-    
-    
-    for var in dataset.variables.values():
-        parse_var(output, var)
+        parse_group(output,group, indent)
     
     
     output.write('''</{}>\n'''.format(NETCDF))
     
-    #retval = output.getvalue()
     
-    output.close()
     
-    #return retval
+def parse_dataset(dataset, url=None):
+    retval=''
+    output = cStringIO.StringIO()
+    try:
+        parse_dataset_buffer(dataset,output,url)
+        retval = output.getvalue()
+    finally:
+        output.close()
+    return retval
+    
+
+    
+
+
     
     
