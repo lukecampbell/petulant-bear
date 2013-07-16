@@ -5,9 +5,9 @@
 
 import cStringIO
 from lxml import etree
-from parse_netcdf import *
+from netcdf2ncml import *
 
-namespaces = {'ncml':NAMESPACE}
+namespaces = {NCML:NAMESPACE}
 
 class NetcdfEtreeException(Exception):
     """
@@ -51,6 +51,81 @@ class NcDimAttrib(etree._Attrib):
 
     def clear(self):
         raise NetcdfEtreeException('''Dimensions and dimension attributes can not be cleared from a NetCDF4 Python Dataset''')
+
+class NcGrpAttrib(etree._Attrib):
+    
+    def __init__(self, *args, **kwargs):
+        self._nc_element = args[0]
+        self._nc_obj = args[0]._nc_obj
+        super(NcGrpAttrib, self).__init__(*args,**kwargs)
+    
+    def __setitem__(self, key, value):
+
+        nc_object = self._nc_obj
+        if nc_object is None:
+            raise NetcdfEtreeException('Internal Error: No nc_obj available!')  
+
+        if key == NAME:
+            raise NetcdfEtreeException('''The name of the group "{}" can not be modified in a NetCDF4 Python Dataset'''.format(self[NAME]))
+        else:
+            raise NetcdfEtreeException('''The key "{}" is not part of the schema for NcML Groups'''.format(key))
+
+        super(NcGrpAttrib, self).__setitem__(key, value)
+
+    def __delitem__(self, key):
+        raise NetcdfEtreeException('''Group attributes can not be deleted from the a NetCDF4 Python Dataset''')
+
+    def update(self, dct):
+        for key, value in dct.iteritems():
+            self[key] = value
+
+    def pop(self, key, *default):
+        raise NetcdfEtreeException('''Group attributes can not be popped from a NetCDF4 Python Dataset''')
+
+    def clear(self):
+        raise NetcdfEtreeException('''Group attributes can not be cleared from a NetCDF4 Python Dataset''')
+
+
+
+class NcVarAttrib(etree._Attrib):
+    
+    def __init__(self, *args, **kwargs):
+        self._nc_element = args[0]
+        self._nc_obj = args[0]._nc_obj
+        super(NcVarAttrib, self).__init__(*args,**kwargs)
+    
+    def __setitem__(self, key, value):
+
+        nc_object = self._nc_obj
+        if nc_object is None:
+            raise NetcdfEtreeException('Internal Error: No nc_obj available!')  
+
+        if key == NAME:
+            # renameVariable(Old value, New Value) is a method of the group containing the variable
+            nc_object.group().renameVariable(self[NAME], value)
+        elif key == SHAPE:
+            raise NetcdfEtreeException('''The shape of the variable "{}" can not be modified in a NetCDF4 Python Dataset'''.format(self[NAME]))
+        elif key == ISUNLIMITED:
+            raise NetcdfEtreeException('''The type of the variable "{}" can not be changed once it is created as in a NetCDF4 Python Dataset'''.format(self[NAME]))
+        else:
+            raise NetcdfEtreeException('''The key "{}" is not part of the schema for NcML Variables'''.format(key))
+
+        super(NcVarAttrib, self).__setitem__(key, value)
+
+    def __delitem__(self, key):
+        raise NetcdfEtreeException('''Dimensions and dimension attributes can not be deleted from the a NetCDF4 Python Dataset''')
+
+    def update(self, dct):
+        for key, value in dct.iteritems():
+            self[key] = value
+
+    def pop(self, key, *default):
+        raise NetcdfEtreeException('''Dimensions and dimension attributes can not be popped from a NetCDF4 Python Dataset''')
+
+    def clear(self):
+        raise NetcdfEtreeException('''Dimensions and dimension attributes can not be cleared from a NetCDF4 Python Dataset''')
+
+
 
 
 class NcAttrAttrib(etree._Attrib):
@@ -125,20 +200,68 @@ class NetcdfElement(etree.ElementBase):
     """
     Must define a Python class extending from etree cython so that we can set attributes 
     """
+        
+    def remove(self, element):
+        
+        if not element.tag.endswith(ATTRIBUTE):
+            raise NetcdfEtreeException('''You can not remove a "{}", only Attributes can be removed from a NetCDF4 Python Dataset (not Groups, Variables or Dimensions)'''.format(element.tag))
+        
+        # Remove the attribute from the NC Dataset
+        name_att = element.get(NAME)
+        self._nc_obj.delncattr(name_att)
+           
+        # now remove it from the element
+        super(NetcdfElement, self).remove(element)
                 
-class VariableElement(etree.ElementBase):
+class VariableElement(NetcdfElement):
     def _init(self):
-        name_att = self.attrib['name']
+        name_att = self.get(NAME) # use get interface during init because self._nc_obj is not set yet
+        if name_att is None:
+            raise NetcdfEtreeException('''Can not create a VariableElement with no name attribute!''')
+        
         pobj = self.getparent()._nc_obj
-        var = pobj.variables[name_att]
+        
+        try:
+            var = pobj.variables[name_att]
+        except KeyError:
+            # if it is not there, try to create it!
+            shape_att = self.get(SHAPE)
+            if shape_att is None:
+                raise NetcdfEtreeException('''Can not create a new NetCDF Variable "{}" with no shape attribute!'''.format(name_att))
+            
+            dimensions = tuple(shape_att.split())
+            
+            type_att = self.get(TYPE)
+            if type_att is None:
+                raise NetcdfEtreeException('''Can not create a new NetCDF Variable "{}" with no type attribute!'''.format(name_att))
+                
+            var = pobj.createVariable(varname=name_att, datatype=inverse_type_map[type_att], dimensions=dimensions)
+            
         self._nc_obj = var
         
-class GroupElement(etree.ElementBase):
+    @property 
+    def attrib(self):
+        return NcVarAttrib(self)
+        
+    def set(self,key,value):
+        self.attrib[key] = value
+        
+        
+        
+class GroupElement(NetcdfElement):
     def _init(self):
-        name_att = self.attrib['name']
+        name_att = self.get(NAME) # use get interface during init because self._nc_obj is not set yet
         pobj = self.getparent()._nc_obj
         grp = pobj.groups[name_att]
         self._nc_obj = grp
+
+    @property 
+    def attrib(self):
+        return NcGrpAttrib(self)
+        
+    def set(self,key,value):
+        self.attrib[key] = value
+
 
 class DimensionElement(etree.ElementBase):
     def _init(self):
@@ -157,6 +280,23 @@ class AttributeElement(etree.ElementBase):
     def _init(self):
         parent = self.getparent()
         self._nc_obj = parent._nc_obj
+        
+        name_att = self.get(NAME) # use get interface during init because self._nc_obj is not set yet
+        if name_att is None:
+            raise NetcdfEtreeException('''Can not create a AttributeElement with no name attribute!''')
+        
+        
+        try:
+            self._nc_obj.getncattr(name_att)
+        except AttributeError:
+            type_att = self.get(TYPE,'char')
+        
+            value_att = self.get(VALUE)
+            if value_att is None:
+                raise NetcdfEtreeException('''Can not create a new NetCDF Attribute "{}" with no value!'''.format(name_att))
+        
+            new_type = inverse_type_map[type_att]
+            self._nc_obj.setncattr(name_att, new_type(value_att))
 
     @property 
     def attrib(self):
@@ -164,6 +304,30 @@ class AttributeElement(etree.ElementBase):
         
     def set(self,key,value):
         self.attrib[key] = value
+        
+
+class ValuesElement(etree.ElementBase):
+    def _init(self):
+        parent = self.getparent()
+        self._nc_obj = parent._nc_obj
+    
+        default_threshold = numpy.get_printoptions().get('threshold',1000)
+        numpy.set_printoptions(threshold=1000000)
+        text = numpy.array2string(self._nc_obj[:].flatten(),separator=' ',max_line_width=numpy.Inf)
+        numpy.set_printoptions(threshold=default_threshold)
+        
+        self.text = text[1:-1] # cut off the leading/trailing brackets
+
+    @property 
+    def text(self):
+        return super(ValuesElement, self).text
+        
+    @text.setter
+    def set_text(self, value):
+        self._nc_obj[:] = numpy.array(text.split(),dtype=self._nc_obj.dtype)
+        super(ValuesElement, self).text = value
+    
+
 
 
 
@@ -175,16 +339,15 @@ class NetCDFLookup(etree.CustomElementClassLookup):
         DIMENSION   : DimensionElement,
         ATTRIBUTE   : AttributeElement,
         GROUP       : GroupElement,
+        VALUES      : ValuesElement
         }
 
 
-    def lookup(self, node_type, document, namespace, name):
-        print "Looking up:",node_type,document,namespace,name
-        
+    def lookup(self, node_type, document, namespace, name):        
         return NetCDFLookup._lookup.get(name)
         
         
-def my_parser(dataset):
+def parse_nc_dataset_as_etree(dataset):
 
     parser = etree.XMLParser()
     parser.set_element_class_lookup(NetCDFLookup())
@@ -192,7 +355,7 @@ def my_parser(dataset):
     xml_etree = None
     output = cStringIO.StringIO()
     try:
-        parse_dataset_buffer(dataset,output)
+        dataset2ncml_buffer(dataset,output)
         output.reset()
         xml_etree = etree.parse(output, parser)
     finally:

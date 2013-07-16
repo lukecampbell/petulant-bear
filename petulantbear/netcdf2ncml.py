@@ -12,12 +12,16 @@ VARIABLE    = 'variable'
 DIMENSION   = 'dimension'
 ATTRIBUTE   = 'attribute'
 GROUP       = 'group'
+VALUES      = 'values'
+
 NAME        = 'name'
 SHAPE       = 'shape'
 LENGTH      = 'length'
 ISUNLIMITED = 'isUnlimited'
 VALUE       = 'value'
 TYPE        = 'type'
+
+NCML        = 'ncml'
 LOCATION    = 'location'
 XMLNS       = 'xmlns'
 NAMESPACE   = 'http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2'
@@ -59,7 +63,6 @@ def sanatize(string,spaces=True):
 
 def parse_dim(output, dim, indent):
     if dim.isunlimited():
-        print "Dim named:", dim._name, " Is unlimted!"
         output.write('''{indent}<{dimension} {name}="{dimname}" {length}="{dimlen}" {isunlimited}="true"/>\n'''.format(
             indent = indent,
             dimension=DIMENSION,
@@ -71,7 +74,6 @@ def parse_dim(output, dim, indent):
             )
         )
     else:
-        print "Dim named:", dim._name, " Is NOT unlimted!"
         output.write('''{indent}<{dimension} {name}="{dimname}" {length}="{dimlen}"/>\n'''.format(
             indent = indent,
             dimension=DIMENSION,
@@ -179,7 +181,7 @@ def parse_group(output, group, indent):
 
 
 
-def parse_dataset_buffer(dataset,output,url=None):
+def dataset2ncml_buffer(dataset,output,url=None):
     
     if url is None:
         output.write('''{header}\n<{netcdf} {xmlns}="{namespace}">\n'''.format(
@@ -220,11 +222,11 @@ def parse_dataset_buffer(dataset,output,url=None):
     
     
     
-def parse_dataset(dataset, url=None):
+def dataset2ncml(dataset, url=None):
     retval=''
     output = cStringIO.StringIO()
     try:
-        parse_dataset_buffer(dataset,output,url)
+        dataset2ncml_buffer(dataset,output,url)
         retval = output.getvalue()
     finally:
         output.close()
