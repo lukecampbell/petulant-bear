@@ -1,7 +1,29 @@
-"""
-@TODO add NcVarAttrib class to set the name of a variable using renameVariable - nothing else can change!
-@TODO add NcGrpAttrib class to prevent setting anything on a group - netCDF4 does not expose a way to do it!
-"""
+#!/usr/bin/env python
+'''
+COPYRIGHT 2013 David Stuebe
+
+This file is part of  Petulant Bear.
+
+    Petulant Bear is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Petulant Bear is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Petulant Bear.  If not, see <http://www.gnu.org/licenses/>.
+
+@author David Stuebe <dstuebe@asasscience.com>
+@file netcdf_etree.py
+@date 07/16/13
+@description Provides a parser method which uses a set of custom element classes to create
+a lxml tree which allows the user to query and modify a NetCDF4 dataset using the lxml 
+interface.
+'''
 
 import cStringIO
 from lxml import etree

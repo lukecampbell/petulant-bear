@@ -1,3 +1,29 @@
+#!/usr/bin/env python
+'''
+COPYRIGHT 2013 David Stuebe
+
+This file is part of  Petulant Bear.
+
+    Petulant Bear is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Petulant Bear is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Petulant Bear.  If not, see <http://www.gnu.org/licenses/>.
+
+@author David Stuebe <dstuebe@asasscience.com>
+@file netcdf2ncml.py
+@date 07/16/13
+@description Definition of static strings and functions for creating NCML from a NetCDF4
+Dataset object.
+'''
+
 from netCDF4 import Dataset
 from netCDF4 import Group
 from netCDF4 import Variable
