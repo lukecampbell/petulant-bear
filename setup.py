@@ -10,7 +10,7 @@ setup(
     description='Presents etree interface to netcdf4-python objects using NCML data model',
     author='David Stuebe',
     author_email='DStuebe@ASAScience.com',
-    url='https://github.com/dstuebe/petulant-bear',
+    url='https://github.com/ioos/petulant-bear',
     classifiers=[
         'License :: GNU GPL',
         'Topic :: NetCDF :: Metadata',
