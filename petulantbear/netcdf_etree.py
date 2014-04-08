@@ -35,14 +35,89 @@ class NetcdfEtreeException(Exception):
     """
     An exception class for NetCDF etree wrappers
     """
+    pass
 
-class NcDimAttrib(etree._Attrib):
+class AttrProxy(object):
+    """
+    Baseclass for dict-like access to lxml etree Attributes, as we can't subclass it.
+    """
+    def __init__(self, attrib_obj):
+        self._attrib_obj = attrib_obj
+
+    def __setitem__(self, key, value):
+        self._attrib_obj[key] = value
+
+    def __delitem__(self, key):
+        del self._attrib_obj[key]
+
+    def update(self, sequence_or_dict):
+        return self._attrib_obj[key].update(sequence_or_dict)
+
+    def pop(self, key, *default):
+        return self._attrib_obj.pop(key, *default)
+
+    def clear(self):
+        self._attrib_obj.clear()
+
+    def __repr__(self):
+        return self._attrib_obj.__repr__()
+
+    def __copy__(self):
+        return self._attrib_obj.__copy__()
+
+    def __deepcopy__(self):
+        return self._attrib_obj.__deepcopy__()
+
+    def __getitem__(self, key):
+        return self._attrib_obj[key]
+
+    def __bool__(self):
+        return self._attrib_obj.__bool__()
+
+    def __len__(self):
+        return self._attrib_obj.__len__()
+
+    def get(self, key, default=None):
+        return self._attrib_obj.get(key, default=default)
+
+    def keys(self):
+        return self._attrib_obj.keys()
+
+    def __iter__(self):
+        return self._attrib_obj.__iter__()
+
+    def iterkeys(self):
+        return self._attrib_obj.iterkeys()
+
+    def values(self):
+        return self._attrib_obj.values()
+
+    def itervalues(self):
+        return self._attrib_obj.itervalues()
+
+    def items(self):
+        return self._attrib_obj.items()
+
+    def iteritems(self):
+        return self._attrib_obj.iteritems()
+
+    def has_key(self, key):
+        return self._attrib_obj.has_key(key)
+
+    def __contains__(self, key):
+        return self._attrib_obj.__contains__(key)
+
+    def __richcmp__(self, one, other, op):
+        return self._attrib_obj.__richcmp__(one, other, op)
+
+class NcDimAttrib(AttrProxy):
     
-    def __init__(self, *args, **kwargs):
-        self._nc_element = args[0]
-        self._nc_obj = args[0]._nc_obj
-        super(NcDimAttrib, self).__init__(*args,**kwargs)
-    
+    def __init__(self, nc_element, attrib_obj):
+        self._nc_element = nc_element
+        self._nc_obj = nc_element_nc_obj
+
+        super(NcDimAttrib, self).__init__(attrib_obj)
+
     def __setitem__(self, key, value):
 
         nc_object = self._nc_obj
@@ -64,22 +139,20 @@ class NcDimAttrib(etree._Attrib):
     def __delitem__(self, key):
         raise NetcdfEtreeException('''Dimensions and dimension attributes can not be deleted from the a NetCDF4 Python Dataset''')
 
-    def update(self, dct):
-        for key, value in dct.iteritems():
-            self[key] = value
-
     def pop(self, key, *default):
         raise NetcdfEtreeException('''Dimensions and dimension attributes can not be popped from a NetCDF4 Python Dataset''')
 
     def clear(self):
         raise NetcdfEtreeException('''Dimensions and dimension attributes can not be cleared from a NetCDF4 Python Dataset''')
 
-class NcGrpAttrib(etree._Attrib):
+
+class NcGrpAttrib(AttrProxy):
     
-    def __init__(self, *args, **kwargs):
-        self._nc_element = args[0]
-        self._nc_obj = args[0]._nc_obj
-        super(NcGrpAttrib, self).__init__(*args,**kwargs)
+    def __init__(self, nc_element, attrib_obj):
+        self._nc_element = nc_element
+        self._nc_obj = nc_element._nc_obj
+
+        super(NcGrpAttrib, self).__init__(attrib_obj)
     
     def __setitem__(self, key, value):
 
@@ -97,10 +170,6 @@ class NcGrpAttrib(etree._Attrib):
     def __delitem__(self, key):
         raise NetcdfEtreeException('''Group attributes can not be deleted from the a NetCDF4 Python Dataset''')
 
-    def update(self, dct):
-        for key, value in dct.iteritems():
-            self[key] = value
-
     def pop(self, key, *default):
         raise NetcdfEtreeException('''Group attributes can not be popped from a NetCDF4 Python Dataset''')
 
@@ -109,12 +178,13 @@ class NcGrpAttrib(etree._Attrib):
 
 
 
-class NcVarAttrib(etree._Attrib):
+class NcVarAttrib(AttrProxy):
     
-    def __init__(self, *args, **kwargs):
-        self._nc_element = args[0]
-        self._nc_obj = args[0]._nc_obj
-        super(NcVarAttrib, self).__init__(*args,**kwargs)
+    def __init__(self, nc_element, attrib_obj):
+        self._nc_element = nc_element
+        self._nc_obj = nc_element._nc_obj
+
+        super(NcVarAttrib, self).__init__(attrib_obj)
     
     def __setitem__(self, key, value):
 
@@ -135,27 +205,24 @@ class NcVarAttrib(etree._Attrib):
         super(NcVarAttrib, self).__setitem__(key, value)
 
     def __delitem__(self, key):
-        raise NetcdfEtreeException('''Dimensions and dimension attributes can not be deleted from the a NetCDF4 Python Dataset''')
-
-    def update(self, dct):
-        for key, value in dct.iteritems():
-            self[key] = value
+        raise NetcdfEtreeException('''Variable attributes can not be deleted from the a NetCDF4 Python Dataset''')
 
     def pop(self, key, *default):
-        raise NetcdfEtreeException('''Dimensions and dimension attributes can not be popped from a NetCDF4 Python Dataset''')
+        raise NetcdfEtreeException('''Variable attributes can not be popped from a NetCDF4 Python Dataset''')
 
     def clear(self):
-        raise NetcdfEtreeException('''Dimensions and dimension attributes can not be cleared from a NetCDF4 Python Dataset''')
+        raise NetcdfEtreeException('''Variable attributes can not be cleared from a NetCDF4 Python Dataset''')
 
 
 
 
-class NcAttrAttrib(etree._Attrib):
+class NcAttrAttrib(AttrProxy):
     
-    def __init__(self, *args, **kwargs):
-        self._nc_element = args[0]
-        self._nc_obj = args[0]._nc_obj
-        super(NcAttrAttrib, self).__init__(*args,**kwargs)
+    def __init__(self, nc_element, attrib_obj):
+        self._nc_element = nc_element
+        self._nc_obj = nc_element._nc_obj
+
+        super(NcAttrAttrib, self).__init__(attrib_obj)
     
     def __setitem__(self, key, value):
 
@@ -204,10 +271,6 @@ class NcAttrAttrib(etree._Attrib):
 
     def __delitem__(self, key):
         raise NetcdfEtreeException('''NcML Attribute attributes can not be deleted from a NetCDF4 Python Dataset''')
-
-    def update(self, dct):
-        for key, value in dct.iteritems():
-            self[key] = value
 
     def pop(self, key, *default):
         raise NetcdfEtreeException('''NcML Attribute attributes can not be popped from a NetCDF4 Python Dataset''')
