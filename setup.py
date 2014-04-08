@@ -12,12 +12,15 @@ setup(
     author_email='DStuebe@ASAScience.com',
     url='https://github.com/ioos/petulant-bear',
     classifiers=[
-        'License :: GNU GPL',
-        'Topic :: NetCDF :: Metadata',
-        'Topic :: NetCDF :: NcML',
-        'Topic :: XML :: Metadata'
-        ],
-    license='GNU GPL',
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Science/Research',
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python',
+        'Topic :: Scientific/Engineering',
+    ],
+    license='GPLv3',
     keywords='netcdf lxml xml metadata ncml',
     packages= ['petulantbear'],
     install_requires = [
