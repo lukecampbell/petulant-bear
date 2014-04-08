@@ -5,7 +5,7 @@ except ImportError:
     from distutils import setup
 
 setup(
-    name='Petulant Bear',
+    name='petulant-bear',
     version='0.1',
     description='Presents etree interface to netcdf4-python objects using NCML data model',
     author='David Stuebe',
