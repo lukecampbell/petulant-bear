@@ -6,7 +6,7 @@ except ImportError:
 
 setup(
     name='petulant-bear',
-    version='0.1.1',
+    version='0.1.2',
     description='Presents etree interface to netcdf4-python objects using NCML data model',
     author='David Stuebe',
     author_email='DStuebe@ASAScience.com',
