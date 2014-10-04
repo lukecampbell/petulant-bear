@@ -29,67 +29,69 @@ from netCDF4 import Group
 from netCDF4 import Variable
 from netCDF4 import Dimension
 
-import cStringIO
+import StringIO
 
 import numpy
 
-NETCDF      = 'netcdf'
-VARIABLE    = 'variable'
-DIMENSION   = 'dimension'
-ATTRIBUTE   = 'attribute'
-GROUP       = 'group'
-VALUES      = 'values'
+NETCDF      = u'netcdf'
+VARIABLE    = u'variable'
+DIMENSION   = u'dimension'
+ATTRIBUTE   = u'attribute'
+GROUP       = u'group'
+VALUES      = u'values'
 
-NAME        = 'name'
-SHAPE       = 'shape'
-LENGTH      = 'length'
-ISUNLIMITED = 'isUnlimited'
-VALUE       = 'value'
-TYPE        = 'type'
+NAME        = u'name'
+SHAPE       = u'shape'
+LENGTH      = u'length'
+ISUNLIMITED = u'isUnlimited'
+VALUE       = u'value'
+TYPE        = u'type'
 
-NCML        = 'ncml'
-LOCATION    = 'location'
-XMLNS       = 'xmlns'
-NAMESPACE   = 'http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2'
-HEADER      = '''<?xml version="1.0" encoding="UTF-8"?>'''
+NCML        = u'ncml'
+LOCATION    = u'location'
+XMLNS       = u'xmlns'
+NAMESPACE   = u'http://www.unidata.ucar.edu/namespaces/netcdf/ncml-2.2'
+# TODO: Figure out how to re-add utf-8 encoding when using utf-8 encoded string
+# and etree
+HEADER      = u'''<?xml version="1.0"?>'''
 
 # common types...
 type_map = {
-    numpy.int8      : 'byte',
-    numpy.int16     : 'short',
-    numpy.int32     : 'int',
-    numpy.int64     : 'long',
-    numpy.float32   : 'float',
-    numpy.float64   : 'double',
-    numpy.string_   : 'char',
-    # This is weak sauce... type(str) == type !
-    type(str)       : 'char'
+    numpy.int8      : u'byte',
+    numpy.int16     : u'short',
+    numpy.int32     : u'int',
+    numpy.int64     : u'long',
+    numpy.float32   : u'float',
+    numpy.float64   : u'double',
+    numpy.string_   : u'char',
+    # This is weak sauuce... type(str) == type !
+    type(str)       : u'char'
     }
-    
+
 inverse_type_map = {
-    'byte'      : numpy.int8,
-    'short'     : numpy.int16,
-    'int'       : numpy.int32,
-    'long'      : numpy.int64,
-    'float'     : numpy.float32,
-    'double'    : numpy.float64,
-    'char'      : unicode,
+    u'byte'      : numpy.int8,
+    u'short'     : numpy.int16,
+    u'int'       : numpy.int32,
+    u'long'      : numpy.int64,
+    u'float'     : numpy.float32,
+    u'double'    : numpy.float64,
+    u'char'      : unicode,
     }
-    
+
 
 def sanatize(string,spaces=True):
     string = string.replace('"','&quote;')
     string = string.replace('&','&amp;')
-    
+
     if spaces is True: string = string.replace(' ','_')
     string = string.replace('<','&lt;')
     string = string.replace('>','&gt;')
-    
+
     return string
 
 def parse_dim(output, dim, indent):
     if dim.isunlimited():
-        output.write('''{indent}<{dimension} {name}="{dimname}" {length}="{dimlen}" {isunlimited}="true"/>\n'''.format(
+        output.write(u'''{indent}<{dimension} {name}="{dimname}" {length}="{dimlen}" {isunlimited}="true"/>\n'''.format(
             indent = indent,
             dimension=DIMENSION,
             name=NAME,
@@ -100,7 +102,7 @@ def parse_dim(output, dim, indent):
             )
         )
     else:
-        output.write('''{indent}<{dimension} {name}="{dimname}" {length}="{dimlen}"/>\n'''.format(
+        output.write(u'''{indent}<{dimension} {name}="{dimname}" {length}="{dimlen}"/>\n'''.format(
             indent = indent,
             dimension=DIMENSION,
             name=NAME,
@@ -115,7 +117,7 @@ def parse_att(output, att, indent):
     att is a tuple: (name, value)
     """
     if isinstance(att[1],(str,unicode)):
-        output.write('''{indent}<{attribute} {name}="{attname}" {value}="{attvalue}"/>\n'''.format(
+        outputStr = u'''{indent}<{attribute} {name}="{attname}" {value}="{attvalue}"/>\n'''.format(
             indent = indent,
             attribute=ATTRIBUTE,
             name=NAME,
@@ -123,11 +125,15 @@ def parse_att(output, att, indent):
             value=VALUE,
             attvalue=sanatize(att[1])
             )
-        )
-    else :
-    
+        if u'We have created a bathymetric digital elevation model' in att[1]:
+            print(att[1])
+            foo = StringIO.StringIO()
+            foo.write(outputStr)
+        output.write(outputStr)
+    else:
+
         att_type = type_map.get(type(att[1]), 'unknown')
-        output.write('''{indent}<{attribute} {name}="{attname}" {type}="{att_type}" {value}="{attvalue}"/>\n'''.format(
+        output.write(u'''{indent}<{attribute} {name}="{attname}" {type}="{att_type}" {value}="{attvalue}"/>\n'''.format(
             indent = indent,
             attribute=ATTRIBUTE,
             name=NAME,
@@ -138,36 +144,37 @@ def parse_att(output, att, indent):
             attvalue=att[1]
             )
         )
-        
+
 
 
 def parse_var(output, var, indent):
-    
+
     try:
         vtype = var.dtype.type
-    except AttributeError: 
+    except AttributeError:
         vtype = var.dtype
-        
+
     if len(var.ncattrs()) == 0:
-            output.write('''{indent}<{variable} {name}="{varname}" {shape}="{vardims}" {type}="{vartype}"/>\n'''.format(
+            output.write(u'''{indent}<{variable} {name}="{varname}" {shape}="{vardims}" {type}="{vartype}"/>\n'''.format(
                 indent = indent,
                 variable=VARIABLE,
                 name=NAME,
-                varname=sanatize(var._name),
+                varname=sanatize(unicode(var._name)),
                 shape=SHAPE,
-                vardims=' '.join([sanatize(dname) for dname in var.dimensions]),
+                vardims=' '.join([sanatize(unicode(dname)) for dname in var.dimensions]),
                 type=TYPE,
                 vartype = type_map.get(vtype,'unknown'),
                 )
             )
     else:
-        output.write('''{indent}<{variable} {name}="{varname}" {shape}="{vardims}" {type}="{vartype}">\n'''.format(
+        output.write(u'''{indent}<{variable} {name}="{varname}" {shape}="{vardims}" {type}="{vartype}">\n'''.format(
                 indent = indent,
                 variable=VARIABLE,
                 name=NAME,
                 varname=sanatize(var._name),
                 shape=SHAPE,
-                vardims=' '.join([sanatize(dname) for dname in var.dimensions]),
+                vardims=' '.join([sanatize(unicode(dname))
+                                  for dname in var.dimensions]),
                 type=TYPE,
                 vartype = type_map.get(vtype,'unknown'),
                 )
@@ -176,18 +183,20 @@ def parse_var(output, var, indent):
         new_indent = indent + '  '
 
         for attname in var.ncattrs():
-            parse_att(output,(attname,var.getncattr(attname)), new_indent)
+            parse_att(output,
+                      (unicode(attname), unicode(var.getncattr(attname))),
+                      new_indent)
 
-        output.write('''{}</{}>\n'''.format(indent,VARIABLE))
+        output.write(u'''{}</{}>\n'''.format(indent,VARIABLE))
 
 
 def parse_group(output, group, indent):
 
-    output.write('''{indent}<{group} {name}="{groupname}">\n'''.format(
+    output.write(u'''{indent}<{group} {name}="{groupname}">\n'''.format(
             indent = indent,
             group=GROUP,
             name=NAME,
-            groupname=sanatize(group.path.split('/')[-1]),
+            groupname=sanatize(unicode(group.path).split('/')[-1]),
             )
         )
 
@@ -199,20 +208,20 @@ def parse_group(output, group, indent):
     for attname in group.ncattrs():
         parse_att(output,(attname,group.getncattr(attname)), new_indent)
 
-    
+
     for var in group.variables.values():
         parse_var(output, var, new_indent)
 
-    output.write('''{}</{}>\n'''.format(indent,GROUP))
+    output.write(u'''{}</{}>\n'''.format(indent,GROUP))
 
 
 
 def dataset2ncml_buffer(dataset,output,url=None):
-    
+
     if url is None:
-        output.write('''{header}\n<{netcdf} {xmlns}="{namespace}">\n'''.format(
+        output.write(u'''{header}\n<{netcdf} {xmlns}="{namespace}">\n'''.format(
                 header=HEADER,
-                netcdf=NETCDF, 
+                netcdf=NETCDF,
                 xmlns=XMLNS,
                 namespace=NAMESPACE,
                 location=LOCATION,
@@ -220,47 +229,49 @@ def dataset2ncml_buffer(dataset,output,url=None):
                 )
             )
     else:
-        output.write('''{header}\n<{netcdf} {xmlns}="{namespace}" {location}="{url}">\n'''.format(
+        output.write(u'''{header}\n<{netcdf} {xmlns}="{namespace}" {location}="{url}">\n'''.format(
                 header=HEADER,
-                netcdf=NETCDF, 
+                netcdf=NETCDF,
                 xmlns=XMLNS,
                 namespace=NAMESPACE,
                 location=LOCATION,
                 url = url
                 )
             )
-    
+
     indent = '  '
     for dim in dataset.dimensions.values():
         parse_dim(output, dim, indent)
-    
+
     for attname in dataset.ncattrs():
-        parse_att(output,(attname,dataset.getncattr(attname)), indent)
+        parse_att(output, (unicode(attname),
+                           unicode(dataset.getncattr(attname))),
+                  indent)
 
     for var in dataset.variables.values():
         parse_var(output, var, indent)
-    
+
     for group in dataset.groups.values():
         parse_group(output,group, indent)
-    
-    
-    output.write('''</{}>\n'''.format(NETCDF))
-    
-    
-    
+
+
+    output.write(u'''</{}>\n'''.format(NETCDF))
+
+
+
 def dataset2ncml(dataset, url=None):
     retval=''
-    output = cStringIO.StringIO()
+    output = StringIO.StringIO()
     try:
         dataset2ncml_buffer(dataset,output,url)
         retval = output.getvalue()
     finally:
         output.close()
     return retval
-    
-
-    
 
 
-    
-    
+
+
+
+
+
