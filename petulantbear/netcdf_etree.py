@@ -25,7 +25,7 @@ a lxml tree which allows the user to query and modify a NetCDF4 dataset using th
 interface.
 '''
 
-import cStringIO
+import StringIO
 from lxml import etree
 from netcdf2ncml import *
 
@@ -434,14 +434,14 @@ class NetCDFLookup(etree.CustomElementClassLookup):
         
 def parse_nc_dataset_as_etree(dataset):
 
-    parser = etree.XMLParser()
+    parser = etree.XMLParser(encoding='UTF-8')
     parser.set_element_class_lookup(NetCDFLookup())
 
     xml_etree = None
-    output = cStringIO.StringIO()
+    output = StringIO.StringIO()
     try:
         dataset2ncml_buffer(dataset,output)
-        output.reset()
+        output.seek(0)
         xml_etree = etree.parse(output, parser)
     finally:
         output.close()
