@@ -79,7 +79,7 @@ inverse_type_map = {
     }
 
 
-def sanatize(string,spaces=True):
+def sanitize(string,spaces=True):
     string = string.replace('"','&quote;')
     string = string.replace('&','&amp;')
 
@@ -95,7 +95,7 @@ def parse_dim(output, dim, indent):
             indent = indent,
             dimension=DIMENSION,
             name=NAME,
-            dimname=sanatize(dim._name),
+            dimname=sanitize(dim._name),
             length=LENGTH,
             dimlen=len(dim),
             isunlimited=ISUNLIMITED
@@ -106,7 +106,7 @@ def parse_dim(output, dim, indent):
             indent = indent,
             dimension=DIMENSION,
             name=NAME,
-            dimname=sanatize(dim._name),
+            dimname=sanitize(dim._name),
             length=LENGTH,
             dimlen=len(dim)
             )
@@ -121,9 +121,9 @@ def parse_att(output, att, indent):
             indent = indent,
             attribute=ATTRIBUTE,
             name=NAME,
-            attname=sanatize(att[0],spaces=False),
+            attname=sanitize(att[0],spaces=False),
             value=VALUE,
-            attvalue=sanatize(att[1])
+            attvalue=sanitize(att[1])
             )
         if u'We have created a bathymetric digital elevation model' in att[1]:
             print(att[1])
@@ -137,7 +137,7 @@ def parse_att(output, att, indent):
             indent = indent,
             attribute=ATTRIBUTE,
             name=NAME,
-            attname=sanatize(att[0]),
+            attname=sanitize(att[0]),
             type=TYPE,
             att_type = att_type,
             value=VALUE,
@@ -159,9 +159,9 @@ def parse_var(output, var, indent):
                 indent = indent,
                 variable=VARIABLE,
                 name=NAME,
-                varname=sanatize(unicode(var._name)),
+                varname=sanitize(unicode(var._name)),
                 shape=SHAPE,
-                vardims=' '.join([sanatize(unicode(dname)) for dname in var.dimensions]),
+                vardims=' '.join([sanitize(unicode(dname)) for dname in var.dimensions]),
                 type=TYPE,
                 vartype = type_map.get(vtype,'unknown'),
                 )
@@ -171,9 +171,9 @@ def parse_var(output, var, indent):
                 indent = indent,
                 variable=VARIABLE,
                 name=NAME,
-                varname=sanatize(var._name),
+                varname=sanitize(var._name),
                 shape=SHAPE,
-                vardims=' '.join([sanatize(unicode(dname))
+                vardims=' '.join([sanitize(unicode(dname))
                                   for dname in var.dimensions]),
                 type=TYPE,
                 vartype = type_map.get(vtype,'unknown'),
@@ -196,7 +196,7 @@ def parse_group(output, group, indent):
             indent = indent,
             group=GROUP,
             name=NAME,
-            groupname=sanatize(unicode(group.path).split('/')[-1]),
+            groupname=sanitize(unicode(group.path).split('/')[-1]),
             )
         )
 
